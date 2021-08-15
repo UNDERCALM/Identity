@@ -35,6 +35,7 @@ namespace Identity.Server
          //Configure the application for OAuth based flow
          ConfigureOAuthForJWT(app);
          ConfigureJWTConsumption(app);
+        
       }
 
       public void ConfigureOAuthForJWT(IAppBuilder app)
