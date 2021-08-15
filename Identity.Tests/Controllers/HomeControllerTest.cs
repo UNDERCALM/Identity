@@ -19,7 +19,7 @@ namespace Identity.Tests.Controllers
 
          // Assert
          Assert.IsNotNull(result);
-         Assert.AreEqual("Home Page", result.ViewBag.Title);
+         Assert.AreEqual("Identity Server", result.ViewBag.Title);
       }
    }
 }
