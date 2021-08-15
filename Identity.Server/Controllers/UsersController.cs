@@ -61,8 +61,8 @@ namespace Identity.Server.Controllers
             _roleManager = value;
          }
       }
-      // GET: api/Roles/5
-      [ResponseType(typeof(IdentityRole))]
+      // GET: api/Users/5
+      [ResponseType(typeof(User))]
       public async Task<IHttpActionResult> GetUser(string id)
       {
          User user = await UserManager.FindByIdAsync(id);
@@ -74,9 +74,45 @@ namespace Identity.Server.Controllers
 
          return Ok(user);
       }
+      // GET: api/Users
+      [ResponseType(typeof(IQueryable<UsersBindingModel>))]
+      public async Task<IHttpActionResult> GetUsers()
+      {
+        
+         if (UserManager.Users == null || UserManager.Users.Count() <= 0)
+         {
+            throw new HttpResponseException(
+            Request.CreateErrorResponse(HttpStatusCode.NotFound, $"no users found"));
+         }
+       
+         IQueryable<UsersBindingModel> users = UserManager.Users.Select(t => new UsersBindingModel
+         {
+            Id = t.Id,
+            IsActive = t.IsActive,
+            Email = t.Email,
+            Username = t.UserName,
+            PhoneNumber = t.PhoneNumber,
+            FirstName = t.FirstName,
+            LastName = t.LastName,
+            State = t.State,
+            StreetAddress = t.StreetAddress,
+            City = t.City,
+            EmailConfirmed = t.EmailConfirmed, 
+            PhoneNumberConfirmed = t.PhoneNumberConfirmed, 
+            Zip = t.Zip
+            
+         });
+         if (users == null)
+         {
+            throw new HttpResponseException(
+            Request.CreateErrorResponse(HttpStatusCode.NotFound, $"no users found"));
+         }
+         IQueryable<UsersBindingModel> result = await Task.FromResult(users);
+         return Ok(result);
+      }
 
       // PUT: api/Users/5
-      [ResponseType(typeof(void))]
+      [ResponseType(typeof(User))]
       public async Task<IHttpActionResult> PutUser(UsersBindingModel model)
       {
          if (string.IsNullOrEmpty(model.Id))
@@ -107,13 +143,11 @@ namespace Identity.Server.Controllers
             return GetErrorResult(result);
          }
 
-         return Ok();
+         return Ok(user);
       }
 
-   
-
-      // DELETE: api/Roles/5
-      [ResponseType(typeof(IdentityRole))]
+      // DELETE: api/Users/5
+      [ResponseType(typeof(User))]
       public async Task<IHttpActionResult> DeleteUser(string id, string provider = "Local", string providerKey = "")
       {
          User user = await UserManager.FindByIdAsync(id);
@@ -140,9 +174,57 @@ namespace Identity.Server.Controllers
          await UserManager.DeleteAsync(user);
 
 
-         return Ok();
+         return Ok(user);
+      }
+      // POST api/Users/ActivateUser
+      [Route("ActivateUser")]
+      [HttpPost]
+      public async Task<IHttpActionResult> ActivateUser(string id) 
+      {
+         User user = await UserManager.FindByIdAsync(id);
+         if (user == null)
+         {
+            throw new HttpResponseException(
+            Request.CreateErrorResponse(HttpStatusCode.NotFound, $"user with the id: {id} not found"));
+         }
+         user.IsActive = true;
+         IdentityResult result = await UserManager.UpdateAsync(user);
+
+         if (!result.Succeeded)
+         {
+            return GetErrorResult(result);
+         }
+
+         return Ok(user);
       }
 
+      // POST api/Users/AssignRole
+      [Route("AssignRole")]
+      [HttpPost]
+      public async Task<IHttpActionResult> AssignRole(string id,string roleName)
+      {
+         User user = await UserManager.FindByIdAsync(id);
+         if (user == null)
+         {
+            throw new HttpResponseException(
+            Request.CreateErrorResponse(HttpStatusCode.NotFound, $"user with the id: {id} not found"));
+         }
+         IdentityRole role = await RoleManager.FindByNameAsync(roleName);
+         if (role == null)
+         {
+            throw new HttpResponseException(
+            Request.CreateErrorResponse(HttpStatusCode.NotFound, $"the role {roleName} was not found"));
+         }
+
+         IdentityResult result = await UserManager.AddToRoleAsync(user.Id,roleName);
+
+         if (!result.Succeeded)
+         {
+            return GetErrorResult(result);
+         }
+         
+         return Ok(role);
+      }
       protected override void Dispose(bool disposing)
       {
          if (disposing)
@@ -159,11 +241,6 @@ namespace Identity.Server.Controllers
          }
         
          base.Dispose(disposing);
-      }
-
-      private bool UserExists(string id)
-      {
-         return UserManager.FindById(id) != null;
       }
       private IHttpActionResult GetErrorResult(IdentityResult result)
       {
